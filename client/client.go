@@ -225,7 +225,7 @@ func (c *Client) write(cmd string, args []any) error {
 	for _, arg := range args {
 		// log.Printf("%d %v", i, arg)
 
-		c.w.WriteByte(' ') // argument seperator
+		c.w.WriteByte(' ') // argument separator
 		switch arg := arg.(type) {
 		case uint:
 			c.w.WriteString(strconv.FormatUint(uint64(arg), 10))
