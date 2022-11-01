@@ -3,7 +3,7 @@ package client_test
 import (
 	"testing"
 
-	"github.com/stfnmllr/pico-cs/go/client"
+	"github.com/pico-cs/go-client/client"
 )
 
 func testHelp(client *client.Client, t *testing.T) {

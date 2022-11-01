@@ -1,4 +1,4 @@
-module github.com/stfnmllr/pico-cs/go
+module github.com/pico-cs/go-client
 
 go 1.19
 
