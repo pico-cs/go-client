@@ -2,18 +2,15 @@ package client
 
 import (
 	"fmt"
-	"sort"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 // RBuf represents a command station refresh buffer.
 type RBuf struct {
 	First, Next int
 	Entries     []*RBufEntry
-}
-
-func (buf *RBuf) sortEntriesByIdx() {
-	sort.Slice(buf.Entries, func(i, j int) bool { return buf.Entries[i].Idx < buf.Entries[j].Idx })
 }
 
 func (buf *RBuf) String() string {
@@ -29,15 +26,15 @@ type RBufEntry struct {
 	DirSpeed        byte
 	F0_4            byte
 	F5_8            byte
-	F9_12           byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F5_12           byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F13_20          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F21_28          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F29_36          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F37_44          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F45_52          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F53_60          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
-	F61_68          byte //lint:ignore ST1003 complains about ALL_CAPS, but want to use it like this
+	F9_12           byte //lint:ignore ST1003 complains about ALL_CAPS
+	F5_12           byte //lint:ignore ST1003 complains about ALL_CAPS
+	F13_20          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F21_28          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F29_36          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F37_44          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F45_52          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F53_60          byte //lint:ignore ST1003 complains about ALL_CAPS
+	F61_68          byte //lint:ignore ST1003 complains about ALL_CAPS
 	Prev            byte
 	Next            byte
 }
@@ -69,8 +66,6 @@ func (e *RBufEntry) String() string {
 		e.Next,
 	)
 }
-
-//rbuf.sortEntriesByIdx()
 
 const (
 	numHeaderValue = 2
@@ -127,6 +122,7 @@ func parseRBuf(lines []string) (*RBuf, error) {
 		if p.err != nil {
 			return nil, p
 		}
+		slices.SortFunc(buf.Entries, func(a, b *RBufEntry) bool { return a.Idx < b.Idx })
 	}
 	return buf, nil
 }

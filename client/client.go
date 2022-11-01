@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"sync"
 	"time"
@@ -97,29 +96,37 @@ const (
 
 // Client represents a command station client instance.
 type Client struct {
-	t           io.ReadWriteCloser // transport
+	conn        Conn
 	w           *bufio.Writer
 	wg          *sync.WaitGroup
+	handler     func(msg string)
 	replyCh     <-chan any
 	lastReadErr error
 }
 
+// defaultHandler
+func defaultHandler(msg string) {}
+
 // NewClient returns a new client instance.
-func NewClient(t io.ReadWriteCloser, pushHnd func(string)) *Client {
+func NewClient(conn Conn, handler func(msg string)) *Client {
 	c := &Client{
-		t:  t,
-		w:  bufio.NewWriter(t),
-		wg: new(sync.WaitGroup),
+		conn:    conn,
+		w:       bufio.NewWriter(conn),
+		wg:      new(sync.WaitGroup),
+		handler: handler,
 	}
 	var pushCh <-chan string
 	c.replyCh, pushCh = c.reader(c.wg)
-	c.pusher(c.wg, pushCh, pushHnd)
+	if handler == nil {
+		handler = defaultHandler
+	}
+	c.pusher(c.wg, pushCh, handler)
 	return c
 }
 
 // Close closes the client connection.
 func (c *Client) Close() {
-	c.t.Close()
+	c.conn.Close()
 	c.wg.Wait()
 }
 
@@ -160,7 +167,7 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 	go func() {
 		defer wg.Done()
 
-		scanner := bufio.NewScanner(c.t)
+		scanner := bufio.NewScanner(c.conn)
 
 		//TODO check scanner.Error()
 
@@ -206,14 +213,12 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 	return replyCh, pushCh
 }
 
-func (c *Client) pusher(wg *sync.WaitGroup, pushCh <-chan string, hnd func(string)) {
+func (c *Client) pusher(wg *sync.WaitGroup, pushCh <-chan string, handler func(string)) {
 	go func() {
 		defer wg.Done()
 
 		for s := range pushCh {
-			if hnd != nil {
-				hnd(s)
-			}
+			handler(s)
 		}
 	}()
 	wg.Add(1)

@@ -44,17 +44,17 @@ func NewSerial(portName string) (*Serial, error) {
 	return &Serial{portName: portName, port: port}, nil
 }
 
-// Read implements the io.Reader interface.
+// Read implements the Conn interface.
 func (s *Serial) Read(p []byte) (n int, err error) {
 	return s.port.Read(p)
 }
 
-// Write implements the io.Writer interface.
+// Write implements the Conn interface.
 func (s *Serial) Write(p []byte) (n int, err error) {
 	return s.port.Write(p)
 }
 
-// Close closes the serial port.
+// Close implements the Conn interface.
 func (s *Serial) Close() error {
 	return s.port.Close()
 }
