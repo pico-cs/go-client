@@ -5,7 +5,7 @@
 
 ![](https://github.com/pico-cs/go-client/workflows/build/badge.svg)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/pico-cs/go-client)](https://goreportcard.com/report/github.com/pico-cs/go-clientx)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pico-cs/go-client)](https://goreportcard.com/report/github.com/pico-cs/go-client)
 
 
 ## Licensing
