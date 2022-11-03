@@ -16,6 +16,14 @@ func testHelp(client *client.Client, t *testing.T) {
 	}
 }
 
+func testBoard(client *client.Client, t *testing.T) {
+	board, err := client.Board()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("Board: %s", board)
+}
+
 func testTemp(client *client.Client, t *testing.T) {
 	numTest := 10 // read numTest temperature values
 
@@ -99,6 +107,7 @@ func TestClient(t *testing.T) {
 		fct  func(client *client.Client, t *testing.T)
 	}{
 		{"Help", testHelp},
+		{"Board", testBoard},
 		{"Temp", testTemp},
 		{"DCCSyncBits", testDCCSyncBits},
 		{"Enabled", testEnabled},

@@ -34,6 +34,7 @@ func formatBool(b bool) byte {
 
 const (
 	cmdHelp         = "h"
+	cmdBoard        = "b"
 	cmdTemp         = "ct"
 	cmdDCCSyncBits  = "cs"
 	cmdEnabled      = "ce"
@@ -302,6 +303,15 @@ func (c *Client) Help() ([]string, error) {
 	v, err := c.callMulti(cmdHelp)
 	if err != nil {
 		return nil, err
+	}
+	return v, nil
+}
+
+// Board returns bord information like controller type and unique id.
+func (c *Client) Board() (string, error) {
+	v, err := c.callSingle(cmdBoard)
+	if err != nil {
+		return "", err
 	}
 	return v, nil
 }
