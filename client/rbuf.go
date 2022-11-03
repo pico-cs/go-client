@@ -68,8 +68,8 @@ func (e *RBufEntry) String() string {
 }
 
 const (
-	numHeaderValue = 2
-	numEntryValue  = 18
+	numRBufValue      = 2
+	numRBufEntryValue = 18
 )
 
 func parseRBuf(lines []string) (*RBuf, error) {
@@ -78,8 +78,8 @@ func parseRBuf(lines []string) (*RBuf, error) {
 	}
 
 	values := strings.Split(lines[0], " ")
-	if len(values) != numHeaderValue {
-		return nil, fmt.Errorf("parse refresh buffer error - invalid number of header values %d -expected %d", len(values), numHeaderValue)
+	if len(values) != numRBufValue {
+		return nil, fmt.Errorf("parse refresh buffer error - invalid number of values %d - expected %d", len(values), numRBufValue)
 	}
 
 	p := &parser{values: values}
@@ -94,8 +94,8 @@ func parseRBuf(lines []string) (*RBuf, error) {
 	// entries
 	for i := 1; i < len(lines); i++ {
 		values := strings.Split(lines[i], " ")
-		if len(values) != numEntryValue {
-			return nil, fmt.Errorf("parse refresh buffer error - invalid number of entry values %d - expected %d", len(values), numEntryValue)
+		if len(values) != numRBufEntryValue {
+			return nil, fmt.Errorf("parse refresh buffer error - invalid number of entry values %d - expected %d", len(values), numRBufValue)
 		}
 
 		p.reset(values)

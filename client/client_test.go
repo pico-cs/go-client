@@ -21,7 +21,7 @@ func testBoard(client *client.Client, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("Board: %s", board)
+	t.Logf("Type: %s ID: %s", board.Type, board.ID)
 }
 
 func testTemp(client *client.Client, t *testing.T) {

@@ -308,12 +308,12 @@ func (c *Client) Help() ([]string, error) {
 }
 
 // Board returns bord information like controller type and unique id.
-func (c *Client) Board() (string, error) {
+func (c *Client) Board() (*Board, error) {
 	v, err := c.callSingle(cmdBoard)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return v, nil
+	return parseBoard(v)
 }
 
 // Temp returns the temperature of the command station.
