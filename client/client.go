@@ -126,9 +126,10 @@ func NewClient(conn Conn, handler func(msg string)) *Client {
 }
 
 // Close closes the client connection.
-func (c *Client) Close() {
-	c.conn.Close()
+func (c *Client) Close() error {
+	err := c.conn.Close()
 	c.wg.Wait()
+	return err
 }
 
 type replyKind int

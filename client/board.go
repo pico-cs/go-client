@@ -21,11 +21,11 @@ var btValues = map[string]BoardType{"pico": BtPico, "pico_w": BtPicoW}
 // BoardType represents the type of a board.
 type BoardType byte
 
-func (bt BoardType) String() string {
-	if int(bt) >= len(btTexts) {
+func (t BoardType) String() string {
+	if int(t) >= len(btTexts) {
 		return btTexts[BtUnknown]
 	}
-	return btTexts[bt]
+	return btTexts[t]
 }
 
 const (
@@ -36,9 +36,9 @@ const (
 // BoardID represents the unique id of a borad.
 type BoardID uint64
 
-func (bi BoardID) String() string {
+func (id BoardID) String() string {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(bi))
+	binary.BigEndian.PutUint64(b, uint64(id))
 	return fmt.Sprintf("% x", b)
 }
 
