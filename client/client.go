@@ -110,7 +110,7 @@ type Client struct {
 func defaultHandler(msg string) {}
 
 // NewClient returns a new client instance.
-func NewClient(conn Conn, handler func(msg string)) *Client {
+func New(conn Conn, handler func(msg string)) *Client {
 	c := &Client{
 		conn:    conn,
 		w:       bufio.NewWriter(conn),

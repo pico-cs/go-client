@@ -19,7 +19,7 @@ func ExampleClient() {
 		log.Fatal(err)
 	}
 
-	client := client.NewClient(conn, func(msg string) {
+	client := client.New(conn, func(msg string) {
 		// handle push messages
 		log.Printf("push message: %s", msg)
 	})

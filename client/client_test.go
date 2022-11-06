@@ -124,7 +124,7 @@ func TestClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := client.NewClient(conn, nil)
+	client := client.New(conn, nil)
 	defer client.Close()
 
 	for _, test := range tests {
