@@ -98,6 +98,7 @@ const (
 // Client represents a command station client instance.
 type Client struct {
 	conn        Conn
+	mu          sync.Mutex // mutex for call
 	w           *bufio.Writer
 	wg          *sync.WaitGroup
 	handler     func(msg string)
@@ -269,6 +270,12 @@ func (c *Client) read() (any, error) {
 }
 
 func (c *Client) call(cmd string, args ...any) (any, error) {
+	// guarantee:
+	// - writing is not 'interleaved' and
+	// - reply order
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if err := c.write(cmd, args); err != nil {
 		return nil, err
 	}
