@@ -25,12 +25,19 @@ func ExampleClient() {
 	})
 	defer client.Close()
 
+	// read borad information.
+	board, err := client.Board()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%s ID %s MAC %s", board.Type, board.ID, board.MAC)
+
 	// read command station temperature.
 	temp, err := client.Temp()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("teperature %f", temp)
+	log.Printf("temperature %f", temp)
 
 	// output:
 }

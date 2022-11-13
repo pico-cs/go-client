@@ -109,7 +109,7 @@ type Client struct {
 // defaultHandler
 func defaultHandler(msg string) {}
 
-// NewClient returns a new client instance.
+// New returns a new client instance.
 func New(conn Conn, handler func(msg string)) *Client {
 	c := &Client{
 		conn:    conn,
