@@ -178,7 +178,7 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 		var multiMsg []string
 
 		for scanner.Scan() {
-			// log.Printf("message: %s", scanner.Text())
+			//log.Printf("message: %s", scanner.Text())
 
 			rk, msg := c.parseReply(scanner.Bytes())
 			switch rk {

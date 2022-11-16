@@ -1,9 +1,15 @@
 package client_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/pico-cs/go-client/client"
+)
+
+const (
+	envHost = "PICO_W_HOST"
+	envPort = "PICO_W_PORT"
 )
 
 func testHelp(client *client.Client, t *testing.T) {
@@ -101,7 +107,7 @@ func testRBuf(client *client.Client, t *testing.T) {
 	}
 }
 
-func TestClient(t *testing.T) {
+func testRun(conn client.Conn, t *testing.T) {
 	tests := []struct {
 		name string
 		fct  func(client *client.Client, t *testing.T)
@@ -114,6 +120,17 @@ func TestClient(t *testing.T) {
 		{"RefreshBuffer", testRBuf},
 	}
 
+	client := client.New(conn, nil)
+	defer client.Close()
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.fct(client, t)
+		})
+	}
+}
+
+func testSerial(t *testing.T) {
 	defaultPortName, err := client.SerialDefaultPortName()
 	if err != nil {
 		t.Fatal(err)
@@ -124,12 +141,40 @@ func TestClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	client := client.New(conn, nil)
-	defer client.Close()
+	testRun(conn, t)
+}
+
+func testTCPClient(t *testing.T) {
+	host, ok := os.LookupEnv(envHost)
+	if !ok {
+		t.Logf("host environment variable %s not found", envHost)
+		return
+	}
+	port, ok := os.LookupEnv(envPort)
+	if !ok {
+		t.Logf("port environment variable %s not found - default %s used", envPort, client.DefaultTCPPort)
+		port = client.DefaultTCPPort
+	}
+	conn, err := client.NewTCPClient(host, port)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testRun(conn, t)
+}
+
+func TestClient(t *testing.T) {
+	tests := []struct {
+		name string
+		fct  func(t *testing.T)
+	}{
+		{"Serial", testSerial},
+		{"TCPClient", testTCPClient},
+	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.fct(client, t)
+			test.fct(t)
 		})
 	}
 }

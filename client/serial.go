@@ -25,7 +25,7 @@ func SerialDefaultPortName() (string, error) {
 	return "", errors.New("default port could not be detected")
 }
 
-// Serial provides a serial connection to to the Raspberry Pi pico.
+// Serial provides a serial connection to to the Raspberry Pi Pico.
 type Serial struct {
 	portName string
 	port     serial.Port
@@ -33,6 +33,13 @@ type Serial struct {
 
 // NewSerial returns a new serial connection instance.
 func NewSerial(portName string) (*Serial, error) {
+	if portName == "" {
+		var err error
+		if portName, err = SerialDefaultPortName(); err != nil {
+			return nil, err
+		}
+	}
+
 	mode := &serial.Mode{
 		BaudRate: baudRate,
 	}
