@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"sync"
 	"time"
@@ -94,6 +95,11 @@ const (
 	pushChSize  = 100
 	timeout     = 5
 )
+
+// Conn is a stream oriented connection to the pico board.
+type Conn interface {
+	io.ReadWriteCloser
+}
 
 // Client represents a command station client instance.
 type Client struct {
