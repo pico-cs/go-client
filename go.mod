@@ -3,7 +3,7 @@ module github.com/pico-cs/go-client
 go 1.19
 
 require (
-	go.bug.st/serial v1.4.0
+	go.bug.st/serial v1.4.1-0.20221125134221-0103114d5096
 	golang.org/x/exp v0.0.0-20221114191408-850992195362
 )
 
