@@ -49,6 +49,8 @@ const (
 	cmdLocoCV29Bit5 = "lcv29bit5"
 	cmdLocoLaddr    = "lladdr"
 	cmdLocoCV1718   = "lcv1718"
+	cmdIOADC        = "ioadc"
+	cmdIOCmdb       = "iocmdb"
 )
 
 // error texts.
@@ -59,8 +61,6 @@ const (
 	etNoData    = "nodata"
 	etNoChange  = "nochange"
 	etInvGPIO   = "invgpio"
-	etRsrvGPIO  = "rsrvgpio"
-	etNoOutGPIO = "nooutgpio"
 	etNotImpl   = "notimpl"
 )
 
@@ -72,8 +72,6 @@ var (
 	ErrNoData    = errors.New("no data")
 	ErrNoChange  = errors.New("no change")
 	ErrInvGPIO   = errors.New("invalid GPIO")
-	ErrRsrvGPIO  = errors.New("reserved GPIO")
-	ErrNoOutGPIO = errors.New("no output GPIO")
 	ErrNotImpl   = errors.New("not implemented")
 	ErrUnknown   = errors.New("unknown error")
 )
@@ -85,8 +83,6 @@ var errorMap = map[string]error{
 	etNoData:    ErrNoData,
 	etNoChange:  ErrNoChange,
 	etInvGPIO:   ErrInvGPIO,
-	etRsrvGPIO:  ErrRsrvGPIO,
-	etNoOutGPIO: ErrNoOutGPIO,
 	etNotImpl:   ErrNotImpl,
 }
 
@@ -518,4 +514,31 @@ func (c *Client) LocoCV1718(addr uint) (byte, byte, error) {
 		return 0, 0, err
 	}
 	return parseByteTuple(v)
+}
+
+// IOADC returns the 'raw' value of the ADC input.
+func (c *Client) IOADC(input uint) (float64, error) {
+	v, err := c.callSingle(cmdIOADC, input)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseFloat(v, 64)
+}
+
+// IOCmdb returns the boolean result value of the binary GPIO command.
+func (c *Client) IOCmdb(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIOCmdb, cmd, gpio)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// SetIOCmdb sets the boolean value of the binary GPIO command.
+func (c *Client) SetIOCmdb(cmd, gpio uint, value bool) (bool, error) {
+	v, err := c.callSingle(cmdIOCmdb, cmd, gpio, value)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
 }
