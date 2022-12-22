@@ -103,16 +103,16 @@ type Client struct {
 	mu          sync.Mutex // mutex for call
 	w           *bufio.Writer
 	wg          *sync.WaitGroup
-	handler     func(msg string)
+	handler     func(Msg, error)
 	replyCh     <-chan any
 	lastReadErr error
 }
 
 // defaultHandler
-func defaultHandler(msg string) {}
+func defaultHandler(Msg, error) {}
 
 // New returns a new client instance.
-func New(conn Conn, handler func(msg string)) *Client {
+func New(conn Conn, handler func(msg Msg, err error)) *Client {
 	c := &Client{
 		conn:    conn,
 		w:       bufio.NewWriter(conn),
@@ -121,7 +121,7 @@ func New(conn Conn, handler func(msg string)) *Client {
 	}
 	var pushCh <-chan string
 	c.replyCh, pushCh = c.reader(c.wg)
-	if handler == nil {
+	if handler != nil {
 		handler = defaultHandler
 	}
 	c.pusher(c.wg, pushCh, handler)
@@ -218,12 +218,12 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 	return replyCh, pushCh
 }
 
-func (c *Client) pusher(wg *sync.WaitGroup, pushCh <-chan string, handler func(string)) {
+func (c *Client) pusher(wg *sync.WaitGroup, pushCh <-chan string, handler func(Msg, error)) {
 	go func() {
 		defer wg.Done()
 
 		for s := range pushCh {
-			handler(s)
+			handler(parseMsg(s))
 		}
 	}()
 	wg.Add(1)

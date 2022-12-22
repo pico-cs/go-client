@@ -19,9 +19,13 @@ func ExampleClient() {
 		log.Fatal(err)
 	}
 
-	client := client.New(conn, func(msg string) {
+	client := client.New(conn, func(msg client.Msg, err error) {
 		// handle push messages
-		log.Printf("push message: %s", msg)
+		if err != nil {
+			log.Printf("push message: %s", msg)
+		} else {
+			log.Printf("push message error: %s", err)
+		}
 	})
 	defer client.Close()
 
