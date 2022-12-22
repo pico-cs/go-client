@@ -542,3 +542,12 @@ func (c *Client) SetIOCmdb(cmd, gpio uint, value bool) (bool, error) {
 	}
 	return strconv.ParseBool(v)
 }
+
+// ToggleIOCmdb toggles the value of the binary GPIO command.
+func (c *Client) ToggleIOCmdb(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIOCmdb, cmd, gpio, charToggle)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
