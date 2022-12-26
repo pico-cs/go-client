@@ -524,7 +524,7 @@ func (c *Client) IOVal(cmd, gpio uint) (bool, error) {
 }
 
 // SetIOVal sets the boolean value of the GPIO.
-func (c *Client) SetIOCmdb(cmd, gpio uint, value bool) (bool, error) {
+func (c *Client) SetIOVal(cmd, gpio uint, value bool) (bool, error) {
 	v, err := c.callSingle(cmdIOVal, cmd, gpio, value)
 	if err != nil {
 		return false, err
@@ -533,7 +533,7 @@ func (c *Client) SetIOCmdb(cmd, gpio uint, value bool) (bool, error) {
 }
 
 // ToggleIOVal toggles the value of the GPIO.
-func (c *Client) ToggleIOCmdb(cmd, gpio uint) (bool, error) {
+func (c *Client) ToggleIOVal(cmd, gpio uint) (bool, error) {
 	v, err := c.callSingle(cmdIOVal, cmd, gpio, charToggle)
 	if err != nil {
 		return false, err
