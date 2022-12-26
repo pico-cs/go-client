@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -37,10 +38,8 @@ const (
 	cmdHelp         = "h"
 	cmdBoard        = "b"
 	cmdTemp         = "ct"
-	cmdDCCSyncBits  = "cs"
-	cmdEnabled      = "ce"
-	cmdRBuf         = "cr"
-	cmdDelLoco      = "cd"
+	cmdMTEnabled    = "mte"
+	cmdMTCV         = "mtcv"
 	cmdLocoDir      = "ld"
 	cmdLocoSpeed128 = "ls"
 	cmdLocoFct      = "lf"
@@ -50,7 +49,13 @@ const (
 	cmdLocoLaddr    = "lladdr"
 	cmdLocoCV1718   = "lcv1718"
 	cmdIOADC        = "ioadc"
-	cmdIOCmdb       = "iocmdb"
+	cmdIOVal        = "ioval"
+	cmdIODir        = "iodir"
+	cmdIOUp         = "ioup"
+	cmdIODown       = "iodown"
+	cmdRBuf         = "r"
+	cmdRBufReset    = "rr"
+	cmdRBufDel      = "rd"
 )
 
 // error texts.
@@ -85,6 +90,17 @@ var errorMap = map[string]error{
 	etInvGPIO:   ErrInvGPIO,
 	etNotImpl:   ErrNotImpl,
 }
+
+// MTCVIdx represents a main track CV index.
+type MTCVIdx byte
+
+// Main track CV index constants.
+const (
+	MTCVNumSyncBit   MTCVIdx = iota // Number of DCC synchronization bits
+	MTCVNumRepeat                   // DCC command repetitions
+	MTCVNumRepeatCV                 // DCC command repetitions for main track CV programming
+	MTCVNumRepeatAcc                // DCC command repetitions for accessory decoders
+)
 
 const (
 	replyChSize = 1
@@ -227,20 +243,17 @@ func (c *Client) write(cmd string, args []any) error {
 	c.w.WriteByte(tagStart)
 	c.w.WriteString(cmd)
 	for _, arg := range args {
-		// log.Printf("%d %v", i, arg)
-
 		c.w.WriteByte(' ') // argument separator
-		switch arg := arg.(type) {
-		case uint:
-			c.w.WriteString(strconv.FormatUint(uint64(arg), 10))
-		case bool:
-			c.w.WriteByte(formatBool(arg))
-		case byte:
-			c.w.WriteByte(arg)
+
+		rv := reflect.ValueOf(arg)
+		switch rv.Kind() {
+		case reflect.Bool:
+			c.w.WriteByte(formatBool(rv.Bool()))
+		case reflect.Uint8, reflect.Uint:
+			c.w.WriteString(strconv.FormatUint(rv.Uint(), 10))
 		default:
 			panic(fmt.Sprintf("invalid argument %[1]v type %[1]T", arg)) // should never happen
 		}
-
 	}
 	c.w.WriteByte('\r')
 	if err := c.w.Flush(); err != nil {
@@ -329,58 +342,40 @@ func (c *Client) Temp() (float64, error) {
 	return strconv.ParseFloat(v, 64)
 }
 
-// DCCSyncBits returns the number of DCC sync bits.
-func (c *Client) DCCSyncBits() (uint, error) {
-	v, err := c.callSingle(cmdDCCSyncBits)
-	if err != nil {
-		return 0, err
-	}
-	return parseUint(v)
-}
-
-// SetDCCSyncBits sets the number of DCC sync bits.
-func (c *Client) SetDCCSyncBits(syncBits uint) (uint, error) {
-	v, err := c.callSingle(cmdDCCSyncBits, syncBits)
-	if err != nil {
-		return 0, err
-	}
-	return parseUint(v)
-}
-
-// Enabled returns true if the DCC sigal generation is enabled, false otherwise.
-func (c *Client) Enabled() (bool, error) {
-	v, err := c.callSingle(cmdEnabled)
+// MTEnabled returns true if the main track DCC sigal generation is enabled, false otherwise.
+func (c *Client) MTEnabled() (bool, error) {
+	v, err := c.callSingle(cmdMTEnabled)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
 }
 
-// SetEnabled sets DCC sigal generation whether to enabled or disabled.
-func (c *Client) SetEnabled(enabled bool) (bool, error) {
-	v, err := c.callSingle(cmdEnabled, enabled)
+// SetMTEnabled sets main track DCC sigal generation whether to enabled or disabled.
+func (c *Client) SetMTEnabled(enabled bool) (bool, error) {
+	v, err := c.callSingle(cmdMTEnabled, enabled)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
 }
 
-// RBuf returns the command station refresh buffer (debugging).
-func (c *Client) RBuf() (*RBuf, error) {
-	v, err := c.callMulti(cmdRBuf)
-	if err != nil {
-		return nil, err
-	}
-	return parseRBuf(v)
-}
-
-// DelLoco deletes loco with address addr from loco buffer (debugging).
-func (c *Client) DelLoco(addr uint) (uint, error) {
-	v, err := c.callSingle(cmdDelLoco)
+// MTCV returns the value of a main track CV.
+func (c *Client) MTCV(idx MTCVIdx) (byte, error) {
+	v, err := c.callSingle(cmdMTCV, idx)
 	if err != nil {
 		return 0, err
 	}
-	return parseUint(v)
+	return parseByte(v)
+}
+
+// SetMTCV sets the value of a main track CV.
+func (c *Client) SetMTCV(idx MTCVIdx, val byte) (byte, error) {
+	v, err := c.callSingle(cmdMTCV, idx, val)
+	if err != nil {
+		return 0, err
+	}
+	return parseByte(v)
 }
 
 // LocoDir returns the direction of a loco.
@@ -519,29 +514,141 @@ func (c *Client) IOADC(input uint) (float64, error) {
 	return strconv.ParseFloat(v, 64)
 }
 
-// IOCmdb returns the boolean result value of the binary GPIO command.
-func (c *Client) IOCmdb(cmd, gpio uint) (bool, error) {
-	v, err := c.callSingle(cmdIOCmdb, cmd, gpio)
+// IOVal returns the boolean value of the GPIO.
+func (c *Client) IOVal(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIOVal, cmd, gpio)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
 }
 
-// SetIOCmdb sets the boolean value of the binary GPIO command.
+// SetIOVal sets the boolean value of the GPIO.
 func (c *Client) SetIOCmdb(cmd, gpio uint, value bool) (bool, error) {
-	v, err := c.callSingle(cmdIOCmdb, cmd, gpio, value)
+	v, err := c.callSingle(cmdIOVal, cmd, gpio, value)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
 }
 
-// ToggleIOCmdb toggles the value of the binary GPIO command.
+// ToggleIOVal toggles the value of the GPIO.
 func (c *Client) ToggleIOCmdb(cmd, gpio uint) (bool, error) {
-	v, err := c.callSingle(cmdIOCmdb, cmd, gpio, charToggle)
+	v, err := c.callSingle(cmdIOVal, cmd, gpio, charToggle)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
+}
+
+// IODir returns the direction of the GPIO.
+// false: in
+// true:  out
+func (c *Client) IODir(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIODir, cmd, gpio)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// SetIODir sets the direction of the GPIO.
+// false: in
+// true:  out
+func (c *Client) SetIODir(cmd, gpio uint, value bool) (bool, error) {
+	v, err := c.callSingle(cmdIODir, cmd, gpio, value)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// ToggleIODir toggles the direction of the GPIO.
+func (c *Client) ToggleIODir(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIODir, cmd, gpio, charToggle)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// IOUp returns the pull-up status of the GPIO.
+func (c *Client) IOUp(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIOUp, cmd, gpio)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// SetIOUp sets the pull-up status of the GPIO.
+func (c *Client) SetIOUp(cmd, gpio uint, value bool) (bool, error) {
+	v, err := c.callSingle(cmdIOUp, cmd, gpio, value)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// ToggleIOUp toggles the pull-up status of the GPIO.
+func (c *Client) ToggleIOUp(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIOUp, cmd, gpio, charToggle)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// IODown returns the pull-down status of the GPIO.
+func (c *Client) IODown(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIODown, cmd, gpio)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// SetIODown sets the pull-down status of the GPIO.
+func (c *Client) SetIODown(cmd, gpio uint, value bool) (bool, error) {
+	v, err := c.callSingle(cmdIODown, cmd, gpio, value)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// ToggleIODown toggles the pull-down status of the GPIO.
+func (c *Client) ToggleIODown(cmd, gpio uint) (bool, error) {
+	v, err := c.callSingle(cmdIODown, cmd, gpio, charToggle)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// RBuf returns the command station refresh buffer (debugging).
+func (c *Client) RBuf() (*RBuf, error) {
+	v, err := c.callMulti(cmdRBuf)
+	if err != nil {
+		return nil, err
+	}
+	return parseRBuf(v)
+}
+
+// RBufReset resets the refresh buffer (debugging).
+func (c *Client) RBufReset() (bool, error) {
+	v, err := c.callSingle(cmdRBufReset)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(v)
+}
+
+// RBufDel deletes address addr from refresh buffer (debugging).
+func (c *Client) RBufDel(addr uint) (uint, error) {
+	v, err := c.callSingle(cmdRBufDel, addr)
+	if err != nil {
+		return 0, err
+	}
+	return parseUint(v)
 }

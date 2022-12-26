@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"log"
 	"os"
 	"testing"
 
@@ -12,8 +13,8 @@ const (
 	envPort = "PICO_W_PORT"
 )
 
-func testHelp(client *client.Client, t *testing.T) {
-	lines, err := client.Help()
+func testHelp(c *client.Client, t *testing.T) {
+	lines, err := c.Help()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,19 +23,19 @@ func testHelp(client *client.Client, t *testing.T) {
 	}
 }
 
-func testBoard(client *client.Client, t *testing.T) {
-	board, err := client.Board()
+func testBoard(c *client.Client, t *testing.T) {
+	board, err := c.Board()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("%s ID %s MAC %s", board.Type, board.ID, board.MAC)
 }
 
-func testTemp(client *client.Client, t *testing.T) {
+func testTemp(c *client.Client, t *testing.T) {
 	numTest := 10 // read numTest temperature values
 
 	for i := 0; i < numTest; i++ {
-		temp, err := client.Temp()
+		temp, err := c.Temp()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,51 +43,13 @@ func testTemp(client *client.Client, t *testing.T) {
 	}
 }
 
-const (
-	minSyncBits = 17
-	maxSyncBits = 32
-)
-
-func testDCCSyncBits(client *client.Client, t *testing.T) {
-	defaultSyncBits, err := client.DCCSyncBits()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("default DCC sync bits %d", defaultSyncBits)
-
-	// test sync bits range minSyncBits <= sync bits <= maxSyncBits
-	syncBits, err := client.SetDCCSyncBits(minSyncBits - 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if syncBits != minSyncBits {
-		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, minSyncBits)
-	}
-	syncBits, err = client.SetDCCSyncBits(maxSyncBits + 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if syncBits != maxSyncBits {
-		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, maxSyncBits)
-	}
-
-	// set back to default
-	syncBits, err = client.SetDCCSyncBits(defaultSyncBits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if syncBits != defaultSyncBits {
-		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, defaultSyncBits)
-	}
-}
-
-func testEnabled(client *client.Client, t *testing.T) {
-	enabled, err := client.Enabled()
+func testMTEnabled(c *client.Client, t *testing.T) {
+	enabled, err := c.MTEnabled()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("enabled %t", enabled)
-	enabled, err = client.SetEnabled(true)
+	enabled, err = c.SetMTEnabled(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +58,47 @@ func testEnabled(client *client.Client, t *testing.T) {
 	}
 }
 
-func testRBuf(client *client.Client, t *testing.T) {
-	rbuf, err := client.RBuf()
+const (
+	minSyncBits = 17
+	maxSyncBits = 32
+)
+
+func testDCCSyncBits(c *client.Client, t *testing.T) {
+
+	defaultSyncBits, err := c.MTCV(client.MTCVNumSyncBit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("default DCC sync bits %d", defaultSyncBits)
+
+	// test sync bits range minSyncBits <= sync bits <= maxSyncBits
+	syncBits, err := c.SetMTCV(client.MTCVNumSyncBit, minSyncBits-1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if syncBits != minSyncBits {
+		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, minSyncBits)
+	}
+	syncBits, err = c.SetMTCV(client.MTCVNumSyncBit, maxSyncBits+1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if syncBits != maxSyncBits {
+		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, maxSyncBits)
+	}
+
+	// set back to default
+	syncBits, err = c.SetMTCV(client.MTCVNumSyncBit, defaultSyncBits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if syncBits != defaultSyncBits {
+		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, defaultSyncBits)
+	}
+}
+
+func testRBuf(c *client.Client, t *testing.T) {
+	rbuf, err := c.RBuf()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,25 +109,62 @@ func testRBuf(client *client.Client, t *testing.T) {
 	}
 }
 
+func testRBufDel(c *client.Client, t *testing.T) {
+	// reset refresh buffer
+	c.RBufReset()
+
+	if _, err := c.SetLocoSpeed128(3, 12); err != nil { // add loco to buffer
+		log.Fatal(err)
+	}
+	t.Logf("added loco: %d", 3)
+	if _, err := c.SetLocoSpeed128(10, 33); err != nil { // add loco to buffer
+		log.Fatal(err)
+	}
+	t.Logf("added loco: %d", 10)
+
+	addr, err := c.RBufDel(10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.Logf("deleted loco: %d", addr)
+
+	rbuf, err := c.RBuf()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(rbuf.Entries) != 1 {
+		log.Fatalf("invalid number of refresh buffer entries %d - expected 1", len(rbuf.Entries))
+	}
+	entry := rbuf.Entries[0]
+	if rbuf.First != int(entry.Idx) || rbuf.Next != int(entry.Idx) {
+		log.Fatalf("invalid refresh buffer header first %d next %d - expected %d", rbuf.First, rbuf.Next, entry.Idx)
+	}
+	if entry.Prev != entry.Idx || entry.Next != entry.Idx {
+		log.Fatalf("invalid refresh buffer entry prev %d next %d - expected %d", entry.Prev, entry.Next, entry.Idx)
+	}
+}
+
 func testRun(conn client.Conn, t *testing.T) {
 	tests := []struct {
 		name string
-		fct  func(client *client.Client, t *testing.T)
+		fct  func(c *client.Client, t *testing.T)
 	}{
 		{"Help", testHelp},
 		{"Board", testBoard},
 		{"Temp", testTemp},
 		{"DCCSyncBits", testDCCSyncBits},
-		{"Enabled", testEnabled},
+		{"MTEnabled", testMTEnabled},
 		{"RefreshBuffer", testRBuf},
+		{"RefreshBufferDel", testRBufDel},
 	}
 
-	client := client.New(conn, nil)
-	defer client.Close()
+	c := client.New(conn, nil)
+	defer c.Close()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.fct(client, t)
+			test.fct(c, t)
 		})
 	}
 }
