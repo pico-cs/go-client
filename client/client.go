@@ -38,7 +38,7 @@ const (
 	cmdHelp         = "h"
 	cmdBoard        = "b"
 	cmdTemp         = "ct"
-	cmdMTEnabled    = "mte"
+	cmdMTE          = "mte"
 	cmdMTCV         = "mtcv"
 	cmdLocoDir      = "ld"
 	cmdLocoSpeed128 = "ls"
@@ -251,6 +251,8 @@ func (c *Client) write(cmd string, args []any) error {
 			c.w.WriteByte(formatBool(rv.Bool()))
 		case reflect.Uint8, reflect.Uint:
 			c.w.WriteString(strconv.FormatUint(rv.Uint(), 10))
+		case reflect.String:
+			c.w.WriteString(rv.String())
 		default:
 			panic(fmt.Sprintf("invalid argument %[1]v type %[1]T", arg)) // should never happen
 		}
@@ -342,18 +344,18 @@ func (c *Client) Temp() (float64, error) {
 	return strconv.ParseFloat(v, 64)
 }
 
-// MTEnabled returns true if the main track DCC sigal generation is enabled, false otherwise.
-func (c *Client) MTEnabled() (bool, error) {
-	v, err := c.callSingle(cmdMTEnabled)
+// MTE returns true if the main track DCC sigal generation is enabled, false otherwise.
+func (c *Client) MTE() (bool, error) {
+	v, err := c.callSingle(cmdMTE)
 	if err != nil {
 		return false, err
 	}
 	return strconv.ParseBool(v)
 }
 
-// SetMTEnabled sets main track DCC sigal generation whether to enabled or disabled.
-func (c *Client) SetMTEnabled(enabled bool) (bool, error) {
-	v, err := c.callSingle(cmdMTEnabled, enabled)
+// SetMTE sets main track DCC sigal generation whether to enabled or disabled.
+func (c *Client) SetMTE(enabled bool) (bool, error) {
+	v, err := c.callSingle(cmdMTE, enabled)
 	if err != nil {
 		return false, err
 	}

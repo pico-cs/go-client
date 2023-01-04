@@ -44,12 +44,12 @@ func testTemp(c *client.Client, t *testing.T) {
 }
 
 func testMTEnabled(c *client.Client, t *testing.T) {
-	enabled, err := c.MTEnabled()
+	enabled, err := c.MTE()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("enabled %t", enabled)
-	enabled, err = c.SetMTEnabled(true)
+	enabled, err = c.SetMTE(true)
 	if err != nil {
 		t.Fatal(err)
 	}
