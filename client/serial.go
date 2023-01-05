@@ -2,7 +2,7 @@ package client
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"strings"
 
 	"go.bug.st/serial"
@@ -45,8 +45,7 @@ func NewSerial(portName string) (*Serial, error) {
 	}
 	port, err := serial.Open(portName, mode)
 	if err != nil {
-		log.Printf("error opening serial %s", err)
-		return nil, err
+		return nil, fmt.Errorf("error opening serial device: %s - %w", portName, err)
 	}
 	return &Serial{portName: portName, port: port}, nil
 }
