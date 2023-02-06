@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.bug.st/serial"
 )
@@ -29,6 +30,7 @@ func SerialDefaultPortName() (string, error) {
 type Serial struct {
 	portName string
 	port     serial.Port
+	closed   bool
 }
 
 // NewSerial returns a new serial connection instance.
@@ -40,14 +42,38 @@ func NewSerial(portName string) (*Serial, error) {
 		}
 	}
 
+	s := &Serial{portName: portName}
+	if err := s.connect(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *Serial) connect() error {
 	mode := &serial.Mode{
 		BaudRate: baudRate,
 	}
-	port, err := serial.Open(portName, mode)
+	var err error
+	s.port, err = serial.Open(s.portName, mode)
 	if err != nil {
-		return nil, fmt.Errorf("error opening serial device: %s - %w", portName, err)
+		return fmt.Errorf("error opening serial device: %s - %w", s.portName, err)
 	}
-	return &Serial{portName: portName, port: port}, nil
+	s.port.ResetInputBuffer()
+	s.port.ResetOutputBuffer()
+	s.closed = false
+	return nil
+}
+
+// Reconnect tries to reconnect the serial connection.
+func (s *Serial) Reconnect() (err error) {
+	err = nil
+	for i := 0; i < reconnectRetry; i++ {
+		time.Sleep(reconnectWait)
+		if err = s.connect(); err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // Read implements the Conn interface.
@@ -62,5 +88,9 @@ func (s *Serial) Write(p []byte) (n int, err error) {
 
 // Close implements the Conn interface.
 func (s *Serial) Close() error {
+	if s.closed {
+		return nil
+	}
+	s.closed = true
 	return s.port.Close()
 }

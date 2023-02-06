@@ -1,10 +1,10 @@
 module github.com/pico-cs/go-client
 
-go 1.19
+go 1.20
 
 require (
 	go.bug.st/serial v1.5.0
-	golang.org/x/exp v0.0.0-20230116083435-1de6713980de
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 )
 
 require (

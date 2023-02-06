@@ -1,11 +1,11 @@
 package client_test
 
 import (
-	"log"
 	"os"
 	"testing"
 
 	"github.com/pico-cs/go-client/client"
+	"github.com/pico-cs/go-client/client/rbuf"
 )
 
 const (
@@ -65,21 +65,21 @@ const (
 
 func testDCCSyncBits(c *client.Client, t *testing.T) {
 
-	defaultSyncBits, err := c.MTCV(client.MTCVNumSyncBit)
+	defaultSyncBits, err := c.CV(client.CVNumSyncBit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("default DCC sync bits %d", defaultSyncBits)
 
 	// test sync bits range minSyncBits <= sync bits <= maxSyncBits
-	syncBits, err := c.SetMTCV(client.MTCVNumSyncBit, minSyncBits-1)
+	syncBits, err := c.SetCV(client.CVNumSyncBit, minSyncBits-1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if syncBits != minSyncBits {
 		t.Errorf("invalid number of sync bits %d - expected %d", syncBits, minSyncBits)
 	}
-	syncBits, err = c.SetMTCV(client.MTCVNumSyncBit, maxSyncBits+1)
+	syncBits, err = c.SetCV(client.CVNumSyncBit, maxSyncBits+1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func testDCCSyncBits(c *client.Client, t *testing.T) {
 	}
 
 	// set back to default
-	syncBits, err = c.SetMTCV(client.MTCVNumSyncBit, defaultSyncBits)
+	syncBits, err = c.SetCV(client.CVNumSyncBit, defaultSyncBits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,52 +97,71 @@ func testDCCSyncBits(c *client.Client, t *testing.T) {
 	}
 }
 
-func testRBuf(c *client.Client, t *testing.T) {
-	rbuf, err := c.RBuf()
+func testRefreshBuffer(c *client.Client, t *testing.T) {
+	buf, err := c.RefreshBuffer()
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("refresh buffer")
-	t.Log(rbuf)
-	for _, entry := range rbuf.Entries {
+	t.Log(buf)
+	for _, entry := range buf.Entries {
 		t.Log(entry)
 	}
 }
 
-func testRBufDel(c *client.Client, t *testing.T) {
+func testRefreshBufferDelete(c *client.Client, t *testing.T) {
 	// reset refresh buffer
-	c.RBufReset()
+	c.RefreshBufferReset()
 
 	if _, err := c.SetLocoSpeed128(3, 12); err != nil { // add loco to buffer
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	t.Logf("added loco: %d", 3)
 	if _, err := c.SetLocoSpeed128(10, 33); err != nil { // add loco to buffer
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	t.Logf("added loco: %d", 10)
 
-	addr, err := c.RBufDel(10)
+	addr, err := c.RefreshBufferDelete(10)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	t.Logf("deleted loco: %d", addr)
 
-	rbuf, err := c.RBuf()
+	buf, err := c.RefreshBuffer()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(rbuf.Entries) != 1 {
-		log.Fatalf("invalid number of refresh buffer entries %d - expected 1", len(rbuf.Entries))
+	if len(buf.Entries) != 1 {
+		t.Fatalf("invalid number of refresh buffer entries %d - expected 1", len(buf.Entries))
 	}
-	entry := rbuf.Entries[0]
-	if rbuf.First != int(entry.Idx) || rbuf.Next != int(entry.Idx) {
-		log.Fatalf("invalid refresh buffer header first %d next %d - expected %d", rbuf.First, rbuf.Next, entry.Idx)
+	entry := buf.Entries[0]
+	if buf.First != int(entry[rbuf.Idx]) || buf.Next != int(entry[rbuf.Idx]) {
+		t.Fatalf("invalid refresh buffer header first %d next %d - expected %d", buf.First, buf.Next, entry[rbuf.Idx])
 	}
-	if entry.Prev != entry.Idx || entry.Next != entry.Idx {
-		log.Fatalf("invalid refresh buffer entry prev %d next %d - expected %d", entry.Prev, entry.Next, entry.Idx)
+	if entry[rbuf.Prev] != entry[rbuf.Idx] || entry[rbuf.Next] != entry[rbuf.Idx] {
+		t.Fatalf("invalid refresh buffer entry prev %d next %d - expected %d", entry[rbuf.Prev], entry[rbuf.Next], entry[rbuf.Idx])
 	}
+}
+
+func testFlash(c *client.Client, t *testing.T) {
+	flash, err := c.Flash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log("flash")
+	t.Log(flash)
+}
+
+func testReboot(c *client.Client, t *testing.T) {
+	if err := c.Reboot(); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Reconnect(); err != nil {
+		t.Fatal(err)
+	}
+	testBoard(c, t)
 }
 
 func testRun(conn client.Conn, t *testing.T) {
@@ -155,8 +174,10 @@ func testRun(conn client.Conn, t *testing.T) {
 		{"Temp", testTemp},
 		{"DCCSyncBits", testDCCSyncBits},
 		{"MTEnabled", testMTEnabled},
-		{"RefreshBuffer", testRBuf},
-		{"RefreshBufferDel", testRBufDel},
+		{"RefreshBuffer", testRefreshBuffer},
+		{"RefreshBufferDelete", testRefreshBufferDelete},
+		{"Flash", testFlash},
+		{"Reboot", testReboot},
 	}
 
 	c := client.New(conn, nil)
