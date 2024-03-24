@@ -2,7 +2,6 @@ package client
 
 import (
 	"net"
-	"time"
 )
 
 // DefaultTCPPort is the default TCP Port used by Pico W.
@@ -21,26 +20,15 @@ func NewTCPClient(host, port string) (*TCPClient, error) {
 	}
 
 	c := &TCPClient{host: host, port: port}
-	if err := c.connect(); err != nil {
+	if err := c.Connect(); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c *TCPClient) connect() (err error) {
+// Connect connects to the tcp address.
+func (c *TCPClient) Connect() (err error) {
 	c.conn, err = net.Dial("tcp", net.JoinHostPort(c.host, c.port))
-	return err
-}
-
-// Reconnect tries to reconnect the TCP client.
-func (c *TCPClient) Reconnect() (err error) {
-	err = nil
-	for i := 0; i < reconnectRetry; i++ {
-		time.Sleep(reconnectWait)
-		if err = c.connect(); err == nil {
-			return nil
-		}
-	}
 	return err
 }
 

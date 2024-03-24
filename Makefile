@@ -8,25 +8,28 @@ all:
 	go vet ./...
 	golint -set_exit_status=true ./...
 	staticcheck -checks all -fail none ./...
+	golangci-lint run ./...
 	go test ./...
+#see fsfe reuse tool (https://git.fsfe.org/reuse/tool)
 	@echo "reuse (license) check"
-	reuse lint
+	pipx run reuse lint
+
+#go generate
+generate:
+	@echo "generate"
+	go generate ./...
 
 #install additional tools
 tools:
+#install stringer
+	@echo "install latest stringer version"
+	go install golang.org/x/tools/cmd/stringer@latest
 #install linter
 	@echo "install latest go linter version"
 	go install golang.org/x/lint/golint@latest
 #install staticcheck
 	@echo "install latest staticcheck version"
 	go install honnef.co/go/tools/cmd/staticcheck@latest
-
-#install fsfe reuse tool (https://git.fsfe.org/reuse/tool)
-# pre-conditions:
-# - Python 3.6+
-# - pip
-# install pre-conditions in Debian like linux distros:
-# - sudo apt install python3
-# - sudo apt install python3-pip
-reuse:
-	pip3 install --user --upgrade reuse
+#install golangci-lint
+	@echo "install latest golangci-lint version"
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

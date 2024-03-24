@@ -7,11 +7,11 @@ import (
 
 const (
 	reconnectRetry = 10
-	reconnectWait  = 5 * time.Second // wait some time to reconnect
+	reconnectWait  = 500 * time.Millisecond
 )
 
 // Conn is a stream oriented connection to the pico board.
 type Conn interface {
-	Reconnect() error
+	Connect() error
 	io.ReadWriteCloser
 }

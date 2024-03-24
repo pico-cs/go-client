@@ -1,29 +1,53 @@
 package client
 
 import (
-	"errors"
 	"fmt"
+	"runtime"
 	"strings"
-	"time"
 
 	"go.bug.st/serial"
 )
 
 const baudRate = 115200 // default baud rate of the Raspberry Pi pico.
 
+// Serial default port errors.
+var (
+	ErrSerialDefaultPortPathMissing = fmt.Errorf("missing default serial port path for %s", runtime.GOOS)
+	ErrSerialDefaultPortNotFound    = fmt.Errorf("default port could not be detected for %s", defaultSerialPortPath)
+)
+
+func defaultPortsList() ([]string, error) {
+	if defaultSerialPortPath == "" {
+		return nil, ErrSerialDefaultPortPathMissing
+	}
+	portNames, err := serial.GetPortsList()
+	if err != nil {
+		return nil, err
+	}
+	var result []string
+	for _, name := range portNames {
+		if strings.HasPrefix(name, defaultSerialPortPath) {
+			result = append(result, name)
+		}
+	}
+	return result, nil
+}
+
 // SerialDefaultPortName returns the default serial port name if a detection is possible and an error otherwise.
 func SerialDefaultPortName() (string, error) {
-	portNames, err := serial.GetPortsList()
+	portNames, err := defaultPortsList()
 	if err != nil {
 		return "", err
 	}
+	switch len(portNames) {
+	case 0:
+		return "", ErrSerialDefaultPortNotFound
+	case 1:
+		return portNames[0], nil
+	default: // more than one.
+		return "", fmt.Errorf("default serial port not unique %v", portNames)
 
-	for _, name := range portNames {
-		if strings.HasPrefix(name, defaultSerialPortPath) {
-			return name, nil
-		}
 	}
-	return "", errors.New("default port could not be detected")
 }
 
 // Serial provides a serial connection to to the Raspberry Pi Pico.
@@ -35,21 +59,15 @@ type Serial struct {
 
 // NewSerial returns a new serial connection instance.
 func NewSerial(portName string) (*Serial, error) {
-	if portName == "" {
-		var err error
-		if portName, err = SerialDefaultPortName(); err != nil {
-			return nil, err
-		}
-	}
-
 	s := &Serial{portName: portName}
-	if err := s.connect(); err != nil {
+	if err := s.Connect(); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-func (s *Serial) connect() error {
+// Connect connect the serial port.s
+func (s *Serial) Connect() error {
 	mode := &serial.Mode{
 		BaudRate: baudRate,
 	}
@@ -58,22 +76,10 @@ func (s *Serial) connect() error {
 	if err != nil {
 		return fmt.Errorf("error opening serial device: %s - %w", s.portName, err)
 	}
-	s.port.ResetInputBuffer()
-	s.port.ResetOutputBuffer()
+	s.port.ResetInputBuffer()  //nolint: errcheck
+	s.port.ResetOutputBuffer() //nolint: errcheck
 	s.closed = false
 	return nil
-}
-
-// Reconnect tries to reconnect the serial connection.
-func (s *Serial) Reconnect() (err error) {
-	err = nil
-	for i := 0; i < reconnectRetry; i++ {
-		time.Sleep(reconnectWait)
-		if err = s.connect(); err == nil {
-			return nil
-		}
-	}
-	return err
 }
 
 // Read implements the Conn interface.

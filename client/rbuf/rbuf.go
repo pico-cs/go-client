@@ -2,11 +2,11 @@
 package rbuf
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // refresh buffer indices
@@ -112,7 +112,8 @@ func Parse(lines []string) (*Buffer, error) {
 			}
 			buf.Entries[i-1][j] = byte(u64)
 		}
-		slices.SortFunc(buf.Entries, func(a, b Entry) bool { return a[Idx] < b[Idx] })
+		//	slices.SortFunc(buf.Entries, func(a, b Entry) bool { return a[Idx] < b[Idx] })
 	}
+	slices.SortFunc(buf.Entries, func(a, b Entry) int { return cmp.Compare(a[Idx], b[Idx]) })
 	return buf, nil
 }

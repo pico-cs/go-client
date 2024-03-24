@@ -122,7 +122,7 @@ const (
 const (
 	replyChSize = 1
 	pushChSize  = 100
-	timeout     = 5
+	timeout     = 30
 )
 
 // Client represents a command station client instance.
@@ -160,14 +160,31 @@ func (c *Client) shutdown() error {
 	return err
 }
 
-// Reconnect tries to reconnect the client.
+func (c *Client) reconnect() error {
+	var err error
+	for i := 0; i < reconnectRetry; i++ {
+		time.Sleep(reconnectWait)
+		if err = c.conn.Connect(); err == nil {
+			return nil
+		}
+	}
+	return err
+}
+
+// Reconnect reconnects the client.
 func (c *Client) Reconnect() error {
-	c.shutdown() // ignore error
-	if err := c.conn.Reconnect(); err != nil {
+	c.shutdown() //nolint: errcheck
+	if err := c.reconnect(); err != nil {
 		return err
 	}
 	c.startup()
 	return nil
+}
+
+// IsSerialConn returns true if the connection is serial, false otherwise.
+func (c *Client) IsSerialConn() bool {
+	_, ok := c.conn.(*Serial)
+	return ok
 }
 
 // Close closes the client connection.
@@ -212,12 +229,14 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 
 		scanner := bufio.NewScanner(c.conn)
 
-		//TODO check scanner.Error()
-
 		multi := false
 		var multiMsg []string
 
 		for scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				replyCh <- err
+			}
+
 			//log.Printf("message: %s", scanner.Text())
 
 			rk, msg := c.parseReply(scanner.Bytes())
@@ -244,9 +263,6 @@ func (c *Client) reader(wg *sync.WaitGroup) (<-chan any, <-chan string) {
 				multi = false
 			}
 		}
-		//if err := scanner.Err(); err != nil {
-		//	fmt.Fprintln(os.Stderr, "reading standard input:", err)
-		//}
 
 		close(replyCh)
 		close(pushCh)
@@ -270,24 +286,25 @@ func (c *Client) pusher(wg *sync.WaitGroup, pushCh <-chan string, handler func(M
 }
 
 func (c *Client) write(cmd string, args []any) error {
-	c.w.WriteByte(tagStart)
-	c.w.WriteString(cmd)
+	c.w.WriteByte(tagStart) //nolint: errcheck
+	c.w.WriteString(cmd)    //nolint: errcheck
 	for _, arg := range args {
-		c.w.WriteByte(' ') // argument separator
+		// argument separator
+		c.w.WriteByte(' ') //nolint: errcheck
 
 		rv := reflect.ValueOf(arg)
 		switch rv.Kind() {
 		case reflect.Bool:
-			c.w.WriteByte(formatBool(rv.Bool()))
+			c.w.WriteByte(formatBool(rv.Bool())) //nolint: errcheck
 		case reflect.Uint8, reflect.Uint:
-			c.w.WriteString(strconv.FormatUint(rv.Uint(), 10))
+			c.w.WriteString(strconv.FormatUint(rv.Uint(), 10)) //nolint: errcheck
 		case reflect.String:
-			c.w.WriteString(rv.String())
+			c.w.WriteString(rv.String()) //nolint: errcheck
 		default:
 			panic(fmt.Sprintf("invalid argument %[1]v type %[1]T", arg)) // should never happen
 		}
 	}
-	c.w.WriteByte('\r')
+	c.w.WriteByte('\r') //nolint: errcheck
 	if err := c.w.Flush(); err != nil {
 		return err
 	}
@@ -749,7 +766,12 @@ func (c *Client) FlashFormat() (bool, error) {
 	return strconv.ParseBool(v)
 }
 
+var rebootWait = 5 * time.Second
+
 // Reboot reboots the command station (debugging).
 func (c *Client) Reboot() error {
-	return c.call(cmdReboot)
+	err := c.call(cmdReboot)
+	// wait some time to be sure that device is re-booted.
+	time.Sleep(rebootWait)
+	return err
 }

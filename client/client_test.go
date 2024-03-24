@@ -111,8 +111,9 @@ func testRefreshBuffer(c *client.Client, t *testing.T) {
 
 func testRefreshBufferDelete(c *client.Client, t *testing.T) {
 	// reset refresh buffer
-	c.RefreshBufferReset()
-
+	if _, err := c.RefreshBufferReset(); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := c.SetLocoSpeed128(3, 12); err != nil { // add loco to buffer
 		t.Fatal(err)
 	}
@@ -159,6 +160,10 @@ func testReboot(c *client.Client, t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := c.Reconnect(); err != nil {
+		if c.IsSerialConn() { // after reboot connection port might be different.
+			t.Log(err)
+			return
+		}
 		t.Fatal(err)
 	}
 	testBoard(c, t)

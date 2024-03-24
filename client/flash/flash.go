@@ -28,25 +28,25 @@ func (f *Flash) String() string {
 // Parse parses the flash memory send by a command station.
 func Parse(lines []string) (*Flash, error) {
 	if len(lines) < 1 {
-		return nil, fmt.Errorf("parse flash error - invalid number of lines %d", len(lines))
+		return nil, fmt.Errorf("flash parse error - invalid number of lines %d", len(lines))
 	}
 
 	values := strings.Split(lines[0], " ")
 	if len(values) != 3 {
-		return nil, fmt.Errorf("parse flash error - invalid number of values %d - expected %d", len(values), 3)
+		return nil, fmt.Errorf("flash parse error - invalid number of values %d - expected %d", len(values), 3)
 	}
 
 	readIdx, err := strconv.ParseUint(values[0], 10, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("flash parse error - read index: %w", err)
 	}
 	writeIdx, err := strconv.ParseUint(values[1], 10, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("flash parse error - write index: %w", err)
 	}
 	pageNo, err := strconv.ParseUint(values[2], 10, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("flash parse error - page number: %w", err)
 	}
 	flash := &Flash{
 		ReadIdx:  uint(readIdx),
@@ -58,10 +58,10 @@ func Parse(lines []string) (*Flash, error) {
 	// content
 	for i := 1; i < len(lines); i++ {
 		values := strings.Split(strings.TrimSpace(lines[i]), " ")
-		for _, value := range values {
+		for j, value := range values {
 			u64, err := strconv.ParseUint(value, 16, 8)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("flash parse error - content line %d column %d: %w", i, j, err)
 			}
 			flash.Content = append(flash.Content, byte(u64))
 		}
